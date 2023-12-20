@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { auth } from './../firebase'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { useNavigate } from 'react-router-dom';
+// Testing
+import { doc, collection, getDocs, setDoc } from "firebase/firestore";
+import { db } from './../firebase'
 
 export default function SignIn() {
 
@@ -47,12 +50,34 @@ export default function SignIn() {
   }
 
   const navigate = useNavigate();
+
   useEffect(() => {
-    if (auth.currentUser != null) {
-      navigate('/surveys');
-    }
+    const fetchData = async () => {
+      try {
+        if (auth.currentUser !== null) {
+          const usersCollection = collection(db, 'users');
+          const existingUsers = await getDocs(usersCollection);
+          const userUID = auth.currentUser.uid;
+
+          const foundUser = existingUsers.docs.find((doc) => doc.id === auth.currentUser.uid);
+          const userDocRef = doc(usersCollection, userUID);
+          if (foundUser) {
+            navigate('/surveys');
+            console.log('userDocRef:',userDocRef);
+            console.log('User found.');
+          } else {
+            await setDoc(userDocRef, {});
+            console.log('User document not found.');
+          }
+        }
+      } catch (error) {
+        console.error('Error getting documents:', error.message);
+      }
+    };
+
+    fetchData();
   }, [auth.currentUser]);
- 
+
   return (
     <>
       <h1>Sign up</h1>

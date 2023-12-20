@@ -6,12 +6,13 @@ function SurveyDisplay() {
   const [mainUsersList, setMainUsersList] = useState([]);
   const [error, setError] = useState(null);
   const [exampleUser, setExampleUser] = useState([]);
-  const [userID, setUserID] = useState(auth.currentUser.uid);
-  const [currentUser, setCurrentUser] = useState(doc(db, 'users', auth.currentUser.uid))
-  const user = userID ? doc(db, 'users', userID) : null;
-  const userSurveys = user ? collection(user, 'Surveys') : null;
+  const [userID, setUserID] = useState(null); //useState(auth.currentUser.uid)
+  const [currentUser, setCurrentUser] = useState(null) //doc(db, 'users', auth.currentUser.uid)
+  const user = userID ? doc(db, 'users', userID) : null;//refactor these so it doesn't spam
+  const userSurveys = user ? collection(user, 'Surveys') : null;//refactor these so it doesn't spam
 
   useEffect(() => {
+    // console.log(user);
     const unSubscribe = onSnapshot(
       collection(db, "users"),
       (collectionSnapshot) => {
@@ -22,6 +23,7 @@ function SurveyDisplay() {
           });
         });
         setMainUsersList(users); 
+        console.log("Users:", users);
       },
       (error) => {
         setError(error.message);
@@ -31,7 +33,26 @@ function SurveyDisplay() {
   }, []);
 
   useEffect(() => {
-    if(userSurveys) {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        setUserID(user.uid);
+        setCurrentUser(doc(db, 'users', user.uid));
+        console.log("Current User:", currentUser)
+        console.log("Current User Test:", user)
+        //stuff
+      } else {
+        //user is signed out
+        setUserID(null);
+        setCurrentUser(null);
+        setExampleUser([]);
+      }
+    });
+    //cleanup
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if(currentUser) {
     getDocs(userSurveys).then((querySnapshot) => {
       const surveys = [];
       querySnapshot.forEach((survey) => {
@@ -43,19 +64,20 @@ function SurveyDisplay() {
         setExampleUser(surveys);
     });
   }
-  }, [userSurveys]);
+  }, [userSurveys, userID]);
 
   const handleUserClick = (userId) => {
+    console.log(userId)
     setUserID(userId)
-    setCurrentUser(doc(db, 'users', userId)._key.path.segments[1])
-    console.log(currentUser)
+    setCurrentUser(doc(db, 'users', userId))  //doc(db, 'users', userId)._key.path.segments[1]
   }
 
-  if (auth.currentUser == null) {
+  if (userID == null) {  //auth.currentUser
     return <h1>You must be signed in to see the surveys</h1>;
-  } else if (auth.currentUser != null) {
+  } else if (userID != null) { //auth.currentUser
     return (
       <div>
+
         <h1>Test</h1>
         <ul>
           {mainUsersList.map((user) => (
